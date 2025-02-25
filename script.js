@@ -1505,4 +1505,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function displayGames() {
-       
+        const gameList = document.getElementById('gameList');
+        gameList.innerHTML = '';
+
+        games.forEach((game, index) => {
+            const gameCard = document.createElement('div');
+            gameCard.className = 'game-card';
+            gameCard.innerHTML = `
+                <h3>${game.title}</h3>
+                <p>${game.description}</p>
+                <button onclick="playGame(${index})">Play Now</button>
+            `;
+            gameList.appendChild(gameCard);
+        });
+    }
+
+    function playGame(index) {
+        const game = games[index];
+        const gameWindow = window.open('', '_blank');
+        if (game.type === 'html') {
+            gameWindow.document.write(game.content);
+            gameWindow.document.close();
+        } else if (game.type === 'js') {
+            gameWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>${game.title}</title></head>
+                <body>
+                    <h1>${game.title}</h1>
+                    <p>Running AI-built JS game...</p>
+                    <script>${game.content}</script>
+                </body>
+                </html>
+            `);
+            gameWindow.document.close();
+        }
+    }
+
+    // Display games on page load
+    displayGames();
+
+    // Update AI-Bot's Daily Picks in sidebar (optional, for realism)
+    const dailyPicks = document.querySelector('.sidebar-picks ul');
+    if (dailyPicks) {
+        dailyPicks.innerHTML = `
+            <li>1. ${enaDreamGame.title} - <a href="#play" onclick="playGame(1)">Play</a> (3,180 views)</li>
+            <li>2. ${aiShooterDemo.title} - <a href="#play" onclick="playGame(2)">Play</a> (531 views)</li>
+        `;
+    }
+});
