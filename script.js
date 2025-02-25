@@ -597,8 +597,8 @@ const rambosGreatAssault = {
                 ctx.lineTo(140, canvas.height - 50 + backgroundOffset + i * canvas.height);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.moveTo(400, canvas.height - 60 + backgroundOffset + i * canvas.height);
-                ctx.lineTo(420, canvas.height - 120 + backgroundOffset + i * canvas.height);
+                ctx.moveTo(400, canvas.height - 60 + backgroundOffset + i * canvas featured-games
+                    ctx.lineTo(420, canvas.height - 120 + backgroundOffset + i * canvas.height);
                 ctx.lineTo(440, canvas.height - 60 + backgroundOffset + i * canvas.height);
                 ctx.fill();
             }
@@ -805,68 +805,71 @@ const rambosGreatAssault = {
 // Array to store uploaded games, starting with Rambo's Great Assault
 let games = [rambosGreatAssault];
 
-document.getElementById('gameUploadForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+// Ensure DOM is loaded before running scripts
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('gameUploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
 
-    const title = document.getElementById('gameTitle').value;
-    const fileInput = document.getElementById('gameFile').files[0];
-    const description = document.getElementById('gameDesc').value;
+        const title = document.getElementById('gameTitle').value;
+        const fileInput = document.getElementById('gameFile').files[0];
+        const description = document.getElementById('gameDesc').value;
 
-    if (fileInput) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            const gameContent = event.target.result;
-            const game = {
-                title: title,
-                description: description,
-                content: gameContent,
-                type: fileInput.name.endsWith('.js') ? 'js' : 'html'
+        if (fileInput) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const gameContent = event.target.result;
+                const game = {
+                    title: title,
+                    description: description,
+                    content: gameContent,
+                    type: fileInput.name.endsWith('.js') ? 'js' : 'html'
+                };
+                games.push(game);
+                displayGames();
+                document.getElementById('gameUploadForm').reset();
             };
-            games.push(game);
-            displayGames();
-            document.getElementById('gameUploadForm').reset();
-        };
-        reader.readAsText(fileInput);
-    }
-});
-
-function displayGames() {
-    const gameList = document.getElementById('gameList');
-    gameList.innerHTML = '';
-
-    games.forEach((game, index) => {
-        const gameCard = document.createElement('div');
-        gameCard.className = 'game-card';
-        gameCard.innerHTML = `
-            <h3>${game.title}</h3>
-            <p>${game.description}</p>
-            <button onclick="playGame(${index})">Play Now</button>
-        `;
-        gameList.appendChild(gameCard);
+            reader.readAsText(fileInput);
+        }
     });
-}
 
-function playGame(index) {
-    const game = games[index];
-    const gameWindow = window.open('', '_blank');
-    if (game.type === 'html') {
-        gameWindow.document.write(game.content);
-        gameWindow.document.close();
-    } else if (game.type === 'js') {
-        gameWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>${game.title}</title></head>
-            <body>
-                <h1>${game.title}</h1>
-                <p>Running AI-built JS game...</p>
-                <script>${game.content}</script>
-            </body>
-            </html>
-        `);
-        gameWindow.document.close();
+    function displayGames() {
+        const gameList = document.getElementById('gameList');
+        gameList.innerHTML = '';
+
+        games.forEach((game, index) => {
+            const gameCard = document.createElement('div');
+            gameCard.className = 'game-card';
+            gameCard.innerHTML = `
+                <h3>${game.title}</h3>
+                <p>${game.description}</p>
+                <button onclick="playGame(${index})">Play Now</button>
+            `;
+            gameList.appendChild(gameCard);
+        });
     }
-}
 
-// Display games on page load
-displayGames();
+    function playGame(index) {
+        const game = games[index];
+        const gameWindow = window.open('', '_blank');
+        if (game.type === 'html') {
+            gameWindow.document.write(game.content);
+            gameWindow.document.close();
+        } else if (game.type === 'js') {
+            gameWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>${game.title}</title></head>
+                <body>
+                    <h1>${game.title}</h1>
+                    <p>Running AI-built JS game...</p>
+                    <script>${game.content}</script>
+                </body>
+                </html>
+            `);
+            gameWindow.document.close();
+        }
+    }
+
+    // Display games on page load
+    displayGames();
+});
