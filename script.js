@@ -592,7 +592,7 @@ const rambosGreatAssault = {
             ctx.fillStyle = '#006400';
             for (let i = -1; i < 2; i++) {
                 ctx.beginPath();
-                ctx.moveTo(100, canvas.height - 50 + backgroundOffset + i * canvas.height);
+                ctx.moveTo(100,canvas.height - 50 + backgroundOffset + i * canvas.height);
                 ctx.lineTo(120, canvas.height - 100 + backgroundOffset + i * canvas.height);
                 ctx.lineTo(140, canvas.height - 50 + backgroundOffset + i * canvas.height);
                 ctx.fill();
@@ -802,21 +802,21 @@ const rambosGreatAssault = {
     type: 'html'
 };
 
-const enaDreamGame = {
-    title: "ENA: Dream Game Chapter 1",
-    description: "Explore a surreal dreamscape as ENA, solving puzzles and interacting with AI dream entities. Use WASD or touch to move, space to interact.",
+const aiShooterDemo = {
+    title: "AI Shooter Demo",
+    description: "Battle adaptive AI enemies in a sci-fi cityscape. Use WASD or touch to move, mouse or touch to aim and shoot. Upgrade weapons to survive.",
     content: `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENA: Dream Game Chapter 1</title>
+    <title>AI Shooter Demo</title>
     <style>
         canvas {
             border: 1px solid #000;
             display: block;
             margin: 0 auto;
-            background: #87ceeb;
+            background: #1a1a1a;
         }
         body {
             background: #333;
@@ -825,90 +825,137 @@ const enaDreamGame = {
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        #dialogue {
+        #upgrades {
             position: absolute;
-            bottom: 10px;
+            top: 10px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
             padding: 10px;
             border-radius: 5px;
-            max-width: 300px;
-            display: none;
+        }
+        button {
+            padding: 5px 10px;
+            margin: 5px;
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #666;
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="dialogue"></div>
+    <div id="upgrades">
+        <p>Score: <span id="score">0</span> | HP: <span id="health">100</span></p>
+        <button onclick="buyUpgrade('shotgun')">Shotgun (100)</button>
+        <button onclick="buyUpgrade('sniper')">Sniper (300)</button>
+        <button onclick="buyUpgrade('speed')">Speed Boost (200)</button>
+        <button onclick="buyUpgrade('health')">Health Pack (150)</button>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const dialogue = document.getElementById('dialogue');
+        const scoreDisplay = document.getElementById('score');
+        const healthDisplay = document.getElementById('health');
 
         const player = {
-            x: 100,
-            y: 300,
-            width: 30,
-            height: 50,
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 20,
             speed: 5,
-            vx: 0,
-            vy: 0,
-            gravity: 0.5,
-            jumpPower: -15,
-            onGround: false
+            hp: 100,
+            bullets: [],
+            weapon: { name: 'pistol', damage: 10, rate: 500, spread: 0, recoil: 2, range: 500 },
+            lastShot: 0,
+            angle: 0,
+            recoilOffset: { x: 0, y: 0 }
         };
 
-        let entities = [];
-        let platforms = [
-            { x: 0, y: 450, width: 200, height: 50 },
-            { x: 300, y: 400, width: 200, height: 50 },
-            { x: 600, y: 350, width: 200, height: 50 }
+        let enemies = [];
+        let particles = [];
+        let enemyBullets = [];
+
+        let buildings = [
+            { x: 100, y: 300, width: 50, height: 200 },
+            { x: 400, y: 250, width: 70, height: 250 },
+            { x: 650, y: 350, width: 60, height: 150 }
         ];
 
-        for (let i = 0; i < 5; i++) {
-            entities.push({
+        function spawnEnemy() {
+            enemies.push({
                 x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: 20,
+                y: -20,
+                radius: 15,
+                hp: 2,
                 speed: 2,
-                type: ['friendly', 'hostile', 'neutral'][Math.floor(Math.random() * 3)],
-                behavior: 'idle'
+                angle: 0,
+                behavior: 'patrol',
+                lastShot: 0
             });
+            setTimeout(spawnEnemy, 2000);
         }
+        spawnEnemy();
 
         const keys = {};
         window.addEventListener('keydown', (e) => keys[e.key] = true);
         window.addEventListener('keyup', (e) => keys[e.key] = false);
+        canvas.addEventListener('mousedown', () => isShooting = true);
+        canvas.addEventListener('mouseup', () => isShooting = false);
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+        });
+
+        let isShooting = false;
+        let touchControls = { left: false, right: false, up: false, down: false, shoot: false, shootX: 0, shootY: 0 };
         canvas.addEventListener('touchstart', handleTouchStart);
         canvas.addEventListener('touchmove', handleTouchMove);
         canvas.addEventListener('touchend', handleTouchEnd);
 
-        let touchControls = { left: false, right: false, jump: false };
-
         function handleTouchStart(e) {
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
-            if (touchX < canvas.width / 2) {
-                if (touchY < canvas.height / 2) touchControls.jump = true;
-                else if (touchX < canvas.width / 4) touchControls.left = true;
-                else touchControls.right = true;
+            const touches = e.touches;
+            for (let i = 0; i < touches.length; i++) {
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touches[i].clientX - rect.left;
+                const touchY = touches[i].clientY - rect.top;
+                if (touchX < canvas.width / 2) {
+                    if (touchY < canvas.height / 3) touchControls.up = true;
+                    else if (touchY > 2 * canvas.height / 3) touchControls.down = true;
+                    else if (touchX < canvas.width / 4) touchControls.left = true;
+                    else touchControls.right = true;
+                } else {
+                    touchControls.shoot = true;
+                    touchControls.shootX = touchX;
+                    touchControls.shootY = touchY;
+                    player.angle = Math.atan2(touchY - player.y, touchX - player.x);
+                }
             }
         }
 
         function handleTouchMove(e) {
             e.preventDefault();
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
-            if (touchX < canvas.width / 2) {
-                touchControls.left = touchX < canvas.width / 4;
-                touchControls.right = touchX >= canvas.width / 4 && touchX < canvas.width / 2;
-                touchControls.jump = touchY < canvas.height / 2;
+            const touches = e.touches;
+            for (let i = 0; i < touches.length; i++) {
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touches[i].clientX - rect.left;
+                const touchY = touches[i].clientY - rect.top;
+                if (touchX < canvas.width / 2) {
+                    touchControls.up = touchY < canvas.height / 3;
+                    touchControls.down = touchY > 2 * canvas.height / 3;
+                    touchControls.left = touchX < canvas.width / 4;
+                    touchControls.right = touchX >= canvas.width / 4 && touchX < canvas.width / 2;
+                } else {
+                    touchControls.shootX = touchX;
+                    touchControls.shootY = touchY;
+                    player.angle = Math.atan2(touchY - player.y, touchX - player.x);
+                }
             }
         }
 
@@ -916,101 +963,284 @@ const enaDreamGame = {
             e.preventDefault();
             touchControls.left = false;
             touchControls.right = false;
-            touchControls.jump = false;
+            touchControls.up = false;
+            touchControls.down = false;
+            touchControls.shoot = false;
         }
 
-        function checkCollision(a, b) {
-            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        class Bullet {
+            constructor(x, y, dx, dy, spread, owner) {
+                this.x = x;
+                this.y = y;
+                this.dx = dx + (Math.random() - 0.5) * spread;
+                this.dy = dy + (Math.random() - 0.5) * spread;
+                this.radius = 5;
+                this.speed = owner.weapon.name === 'sniper' ? 15 : 10;
+                this.damage = owner.weapon.damage;
+                this.range = owner.weapon.range;
+                this.distanceTraveled = 0;
+            }
+            update() {
+                this.x += this.dx * this.speed;
+                this.y += this.dy * this.speed;
+                this.distanceTraveled += this.speed;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffff00';
+                ctx.fill();
+            }
         }
 
-        function updateEntities() {
-            entities.forEach(entity => {
-                const dx = player.x - entity.x;
-                const dy = player.y - entity.y;
+        class EnemyBullet {
+            constructor(x, y, dx, dy) {
+                this.x = x;
+                this.y = y;
+                this.dx = dx;
+                this.dy = dy;
+                this.speed = 5;
+                this.radius = 4;
+            }
+            update() {
+                this.x += this.dx * this.speed;
+                this.y += this.dy * this.speed;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff0000';
+                ctx.fill();
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = Math.random() * 5 + 2;
+                this.dx = (Math.random() - 0.5) * 4;
+                this.dy = (Math.random() - 0.5) * 4;
+                this.life = 30;
+            }
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.life--;
+                this.radius *= 0.95;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff4500';
+                ctx.fill();
+            }
+        }
+
+        function shoot() {
+            const now = Date.now();
+            if (now - player.lastShot < player.weapon.rate) return;
+            player.lastShot = now;
+
+            const dx = Math.cos(player.angle);
+            const dy = Math.sin(player.angle);
+            player.bullets.push(new Bullet(player.x, player.y, dx, dy, player.weapon.spread, player));
+
+            player.recoilOffset.x = -dx * player.weapon.recoil;
+            player.recoilOffset.y = -dy * player.weapon.recoil;
+            setTimeout(() => { player.recoilOffset.x = 0; player.recoilOffset.y = 0; }, 100);
+        }
+
+        function updateEnemies() {
+            enemies.forEach((enemy, index) => {
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (entity.type === 'friendly' && dist < 200) {
-                    entity.behavior = 'follow';
-                    entity.x += (dx / dist) * entity.speed;
-                    entity.y += (dy / dist) * entity.speed;
-                } else if (entity.type === 'hostile' && dist < 300) {
-                    entity.behavior = 'attack';
-                    if (Math.random() < 0.01) {
-                        entity.x += (dx / dist) * entity.speed * 1.5;
-                        entity.y += (dy / dist) * entity.speed * 1.5;
+                if (enemy.behavior === 'patrol') {
+                    enemy.x += Math.random() * 2 - 1;
+                    enemy.y += Math.random() * 2 - 1;
+                    if (dist < 300) enemy.behavior = 'chase';
+                } else if (enemy.behavior === 'chase') {
+                    enemy.x += (dx / dist) * enemy.speed;
+                    enemy.y += (dy / dist) * enemy.speed;
+                    if (dist < 100 && Math.random() < 0.01) enemy.behavior = 'dodge';
+                    if (dist > 400) enemy.behavior = 'patrol';
+                    if (Date.now() - enemy.lastShot > 2000 && Math.random() < 0.02) {
+                        enemy.shoot();
+                        enemy.lastShot = Date.now();
                     }
-                } else if (entity.type === 'neutral') {
-                    entity.behavior = 'idle';
-                    entity.x += Math.random() * 2 - 1;
-                    entity.y += Math.random() * 2 - 1;
+                } else if (enemy.behavior === 'dodge') {
+                    enemy.x += -(dx / dist) * enemy.speed * 1.5;
+                    enemy.y += -(dy / dist) * enemy.speed * 1.5;
+                    if (Math.random() < 0.05) enemy.behavior = 'chase';
                 }
 
-                entity.x = Math.max(0, Math.min(canvas.width - entity.radius * 2, entity.x));
-                entity.y = Math.max(0, Math.min(canvas.height - entity.radius * 2, entity.y));
+                enemy.x = Math.max(0, Math.min(canvas.width - enemy.radius * 2, enemy.x));
+                enemy.y = Math.max(0, Math.min(canvas.height - enemy.radius * 2, enemy.y));
+                buildings.forEach(building => {
+                    if (enemy.x + enemy.radius > building.x && enemy.x - enemy.radius < building.x + building.width &&
+                        enemy.y + enemy.radius > building.y && enemy.y - enemy.radius < building.y + building.height) {
+                        enemy.x -= (dx / dist) * enemy.speed;
+                        enemy.y -= (dy / dist) * enemy.speed;
+                    }
+                });
 
-                if (dist < 50 && Math.random() < 0.05) {
-                    showDialogue(entity.type === 'friendly' ? "Hello, ENA! Follow me..." : 
-                                entity.type === 'hostile' ? "Leave this dream!" : "I'm just drifting...");
-                }
+                enemy.draw();
             });
         }
 
-        function showDialogue(text) {
-            dialogue.textContent = text;
-            dialogue.style.display = 'block';
-            setTimeout(() => dialogue.style.display = 'none', 3000);
+        Enemy.prototype.shoot = function() {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            enemyBullets.push(new EnemyBullet(this.x, this.y, dx / dist, dy / dist));
+        };
+
+        Enemy.prototype.draw = function() {
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        function checkCollision(a, b) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            return dist < a.radius + b.radius;
+        }
+
+        function checkBuildingCollision(obj, building) {
+            return obj.x + obj.radius > building.x && obj.x - obj.radius < building.x + building.width &&
+                   obj.y + obj.radius > building.y && obj.y - obj.radius < building.y + building.height;
+        }
+
+        let score = 0;
+        function buyUpgrade(type) {
+            if (type === 'shotgun' && score >= 100) {
+                player.weapon = { name: 'shotgun', damage: 20, rate: 800, spread: 0.2, recoil: 5, range: 300 };
+                score -= 100;
+            } else if (type === 'sniper' && score >= 300) {
+                player.weapon = { name: 'sniper', damage: 50, rate: 1000, spread: 0.01, recoil: 8, range: 1000 };
+                score -= 300;
+            } else if (type === 'speed' && score >= 200) {
+                player.speed = 7;
+                score -= 200;
+                setTimeout(() => player.speed = 5, 10000);
+            } else if (type === 'health' && score >= 150) {
+                player.hp = Math.min(player.hp + 50, 100);
+                score -= 150;
+            }
+            scoreDisplay.textContent = score;
+            healthDisplay.textContent = player.hp;
         }
 
         function update() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = '#87ceeb';
+            ctx.fillStyle = '#1a1a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#228b22';
-            platforms.forEach(platform => {
-                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            ctx.fillStyle = '#666';
+            buildings.forEach(building => {
+                ctx.fillRect(building.x, building.y, building.width, building.height);
             });
 
-            player.vx = 0;
-            if (keys['a'] || touchControls.left) player.vx = -player.speed;
-            if (keys['d'] || touchControls.right) player.vx = player.speed;
-            if ((keys['w'] || touchControls.jump) && player.onGround) {
-                player.vy = player.jumpPower;
-                player.onGround = false;
+            let newX = player.x;
+            let newY = player.y;
+            if (keys['w'] || touchControls.up) newY -= player.speed;
+            if (keys['s'] || touchControls.down) newY += player.speed;
+            if (keys['a'] || touchControls.left) newX -= player.speed;
+            if (keys['d'] || touchControls.right) newX += player.speed;
+
+            let collided = false;
+            buildings.forEach(building => {
+                if (checkBuildingCollision({ x: newX, y: newY, radius: player.radius }, building)) {
+                    collided = true;
+                }
+            });
+            if (!collided) {
+                player.x = newX;
+                player.y = newY;
             }
 
-            player.vy += player.gravity;
-            player.x += player.vx;
-            player.y += player.vy;
+            ctx.save();
+            ctx.translate(player.x + player.recoilOffset.x, player.y + player.recoilOffset.y);
+            ctx.rotate(player.angle);
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillRect(-player.radius, -player.radius, player.radius * 2, player.radius * 2);
+            ctx.restore();
 
-            player.onGround = false;
-            platforms.forEach(platform => {
-                if (checkCollision(player, platform)) {
-                    if (player.vy > 0) {
-                        player.y = platform.y - player.height;
-                        player.vy = 0;
-                        player.onGround = true;
-                    } else if (player.vy < 0) {
-                        player.y = platform.y + platform.height;
-                        player.vy = 0;
+            if (isShooting || touchControls.shoot) {
+                if (touchControls.shoot) {
+                    const rect = canvas.getBoundingClientRect();
+                    const touchX = touchControls.shootX - rect.left;
+                    const touchY = touchControls.shootY - rect.top;
+                    player.angle = Math.atan2(touchY - player.y, touchX - player.x);
+                }
+                shoot();
+            }
+
+            player.bullets.forEach((bullet, bIndex) => {
+                bullet.update();
+                bullet.draw();
+
+                let shouldRemove = bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height || bullet.distanceTraveled > bullet.range;
+                buildings.forEach(building => {
+                    if (checkBuildingCollision(bullet, building)) shouldRemove = true;
+                });
+
+                if (shouldRemove) {
+                    player.bullets.splice(bIndex, 1);
+                    return;
+                }
+
+                enemies.forEach((enemy, eIndex) => {
+                    if (checkCollision(bullet, enemy)) {
+                        enemy.hp -= bullet.damage;
+                        player.bullets.splice(bIndex, 1);
+                        if (enemy.hp <= 0) {
+                            enemies.splice(eIndex, 1);
+                            score += 20;
+                            scoreDisplay.textContent = score;
+                            for (let i = 0; i < 10; i++) {
+                                particles.push(new Particle(enemy.x, enemy.y));
+                            }
+                        }
                     }
-                    if (player.vx > 0) player.x = platform.x - player.width;
-                    else if (player.vx < 0) player.x = platform.x + platform.width;
+                });
+            });
+
+            updateEnemies();
+            enemyBullets.forEach((bullet, bIndex) => {
+                bullet.update();
+                bullet.draw();
+
+                let shouldRemove = bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height;
+                buildings.forEach(building => {
+                    if (checkBuildingCollision(bullet, building)) shouldRemove = true;
+                });
+
+                if (shouldRemove) {
+                    enemyBullets.splice(bIndex, 1);
+                    return;
+                }
+
+                if (checkCollision(bullet, player)) {
+                    player.hp -= 10;
+                    enemyBullets.splice(bIndex, 1);
+                    healthDisplay.textContent = player.hp;
+                    if (player.hp <= 0) {
+                        alert(`Game Over! Score: ${score}`);
+                        document.location.reload();
+                    }
                 }
             });
 
-            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
-            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-
-            ctx.fillStyle = '#ff69b4';
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-
-            updateEntities();
-            entities.forEach(entity => {
-                ctx.fillStyle = entity.type === 'friendly' ? '#00ff00' : entity.type === 'hostile' ? '#ff0000' : '#ffff00';
-                ctx.beginPath();
-                ctx.arc(entity.x, entity.y, entity.radius, 0, Math.PI * 2);
-                ctx.fill();
+            particles.forEach((particle, pIndex) => {
+                particle.update();
+                particle.draw();
+                if (particle.life <= 0) particles.splice(pIndex, 1);
             });
 
             requestAnimationFrame(update);
@@ -1023,6 +1253,83 @@ const enaDreamGame = {
     type: 'html'
 };
 
-const aiShooterDemo = {
-    title: "AI Shooter Demo",
-    description: "Battle adaptive AI enemies in a sci-fi cityscape. Use WAS
+// Array to store uploaded games, starting with all pre-loaded games
+let games = [rambosGreatAssault, enaDreamGame, aiShooterDemo];
+
+// Ensure DOM is loaded before running scripts
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('gameUploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const title = document.getElementById('gameTitle').value;
+        const fileInput = document.getElementById('gameFile').files[0];
+        const description = document.getElementById('gameDesc').value;
+
+        if (fileInput) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const gameContent = event.target.result;
+                const game = {
+                    title: title,
+                    description: description,
+                    content: gameContent,
+                    type: fileInput.name.endsWith('.js') ? 'js' : 'html'
+                };
+                games.push(game);
+                displayGames();
+                document.getElementById('gameUploadForm').reset();
+            };
+            reader.readAsText(fileInput);
+        }
+    });
+
+    function displayGames() {
+        const gameList = document.getElementById('gameList');
+        gameList.innerHTML = '';
+
+        games.forEach((game, index) => {
+            const gameCard = document.createElement('div');
+            gameCard.className = 'game-card';
+            gameCard.innerHTML = `
+                <h3>${game.title}</h3>
+                <p>${game.description}</p>
+                <button onclick="playGame(${index})">Play Now</button>
+            `;
+            gameList.appendChild(gameCard);
+        });
+    }
+
+    function playGame(index) {
+        const game = games[index];
+        const gameWindow = window.open('', '_blank');
+        if (game.type === 'html') {
+            gameWindow.document.write(game.content);
+            gameWindow.document.close();
+        } else if (game.type === 'js') {
+            gameWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>${game.title}</title></head>
+                <body>
+                    <h1>${game.title}</h1>
+                    <p>Running AI-built JS game...</p>
+                    <script>${game.content}</script>
+                </body>
+                </html>
+            `);
+            gameWindow.document.close();
+        }
+    }
+
+    // Display games on page load
+    displayGames();
+
+    // Update AI-Bot's Daily Picks in sidebar (optional, for realism)
+    const dailyPicks = document.querySelector('.sidebar-picks ul');
+    if (dailyPicks) {
+        dailyPicks.innerHTML = `
+            <li>1. ${enaDreamGame.title} - <a href="#play" onclick="playGame(1)">Play</a> (3,180 views)</li>
+            <li>2. ${aiShooterDemo.title} - <a href="#play" onclick="playGame(2)">Play</a> (531 views)</li>
+        `;
+    }
+});
