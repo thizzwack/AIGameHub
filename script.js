@@ -1,4 +1,4 @@
-// Pre-loaded game: Rambo's Great Assault
+// Pre-loaded games
 const rambosGreatAssault = {
     title: "Rambo's Great Assault",
     description: "Join Rambo in a wilderness shootout! Use WASD or touch joystick to move, mouse or touch to aim and shoot. Buy upgrades with your score to survive waves of enemies.",
@@ -597,8 +597,8 @@ const rambosGreatAssault = {
                 ctx.lineTo(140, canvas.height - 50 + backgroundOffset + i * canvas.height);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.moveTo(400, canvas.height - 60 + backgroundOffset + i * canvas featured-games
-                    ctx.lineTo(420, canvas.height - 120 + backgroundOffset + i * canvas.height);
+                ctx.moveTo(400, canvas.height - 60 + backgroundOffset + i * canvas.height);
+                ctx.lineTo(420, canvas.height - 120 + backgroundOffset + i * canvas.height);
                 ctx.lineTo(440, canvas.height - 60 + backgroundOffset + i * canvas.height);
                 ctx.fill();
             }
@@ -802,74 +802,227 @@ const rambosGreatAssault = {
     type: 'html'
 };
 
-// Array to store uploaded games, starting with Rambo's Great Assault
-let games = [rambosGreatAssault];
-
-// Ensure DOM is loaded before running scripts
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('gameUploadForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const title = document.getElementById('gameTitle').value;
-        const fileInput = document.getElementById('gameFile').files[0];
-        const description = document.getElementById('gameDesc').value;
-
-        if (fileInput) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const gameContent = event.target.result;
-                const game = {
-                    title: title,
-                    description: description,
-                    content: gameContent,
-                    type: fileInput.name.endsWith('.js') ? 'js' : 'html'
-                };
-                games.push(game);
-                displayGames();
-                document.getElementById('gameUploadForm').reset();
-            };
-            reader.readAsText(fileInput);
+const enaDreamGame = {
+    title: "ENA: Dream Game Chapter 1",
+    description: "Explore a surreal dreamscape as ENA, solving puzzles and interacting with AI dream entities. Use WASD or touch to move, space to interact.",
+    content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENA: Dream Game Chapter 1</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+            display: block;
+            margin: 0 auto;
+            background: #87ceeb;
         }
-    });
-
-    function displayGames() {
-        const gameList = document.getElementById('gameList');
-        gameList.innerHTML = '';
-
-        games.forEach((game, index) => {
-            const gameCard = document.createElement('div');
-            gameCard.className = 'game-card';
-            gameCard.innerHTML = `
-                <h3>${game.title}</h3>
-                <p>${game.description}</p>
-                <button onclick="playGame(${index})">Play Now</button>
-            `;
-            gameList.appendChild(gameCard);
-        });
-    }
-
-    function playGame(index) {
-        const game = games[index];
-        const gameWindow = window.open('', '_blank');
-        if (game.type === 'html') {
-            gameWindow.document.write(game.content);
-            gameWindow.document.close();
-        } else if (game.type === 'js') {
-            gameWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head><title>${game.title}</title></head>
-                <body>
-                    <h1>${game.title}</h1>
-                    <p>Running AI-built JS game...</p>
-                    <script>${game.content}</script>
-                </body>
-                </html>
-            `);
-            gameWindow.document.close();
+        body {
+            background: #333;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
         }
-    }
+        #dialogue {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="dialogue"></div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const dialogue = document.getElementById('dialogue');
 
-    // Display games on page load
-    displayGames();
-});
+        const player = {
+            x: 100,
+            y: 300,
+            width: 30,
+            height: 50,
+            speed: 5,
+            vx: 0,
+            vy: 0,
+            gravity: 0.5,
+            jumpPower: -15,
+            onGround: false
+        };
+
+        let entities = [];
+        let platforms = [
+            { x: 0, y: 450, width: 200, height: 50 },
+            { x: 300, y: 400, width: 200, height: 50 },
+            { x: 600, y: 350, width: 200, height: 50 }
+        ];
+
+        for (let i = 0; i < 5; i++) {
+            entities.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 20,
+                speed: 2,
+                type: ['friendly', 'hostile', 'neutral'][Math.floor(Math.random() * 3)],
+                behavior: 'idle'
+            });
+        }
+
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.key] = true);
+        window.addEventListener('keyup', (e) => keys[e.key] = false);
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchend', handleTouchEnd);
+
+        let touchControls = { left: false, right: false, jump: false };
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            if (touchX < canvas.width / 2) {
+                if (touchY < canvas.height / 2) touchControls.jump = true;
+                else if (touchX < canvas.width / 4) touchControls.left = true;
+                else touchControls.right = true;
+            }
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            if (touchX < canvas.width / 2) {
+                touchControls.left = touchX < canvas.width / 4;
+                touchControls.right = touchX >= canvas.width / 4 && touchX < canvas.width / 2;
+                touchControls.jump = touchY < canvas.height / 2;
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            touchControls.left = false;
+            touchControls.right = false;
+            touchControls.jump = false;
+        }
+
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        function updateEntities() {
+            entities.forEach(entity => {
+                const dx = player.x - entity.x;
+                const dy = player.y - entity.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (entity.type === 'friendly' && dist < 200) {
+                    entity.behavior = 'follow';
+                    entity.x += (dx / dist) * entity.speed;
+                    entity.y += (dy / dist) * entity.speed;
+                } else if (entity.type === 'hostile' && dist < 300) {
+                    entity.behavior = 'attack';
+                    if (Math.random() < 0.01) {
+                        entity.x += (dx / dist) * entity.speed * 1.5;
+                        entity.y += (dy / dist) * entity.speed * 1.5;
+                    }
+                } else if (entity.type === 'neutral') {
+                    entity.behavior = 'idle';
+                    entity.x += Math.random() * 2 - 1;
+                    entity.y += Math.random() * 2 - 1;
+                }
+
+                entity.x = Math.max(0, Math.min(canvas.width - entity.radius * 2, entity.x));
+                entity.y = Math.max(0, Math.min(canvas.height - entity.radius * 2, entity.y));
+
+                if (dist < 50 && Math.random() < 0.05) {
+                    showDialogue(entity.type === 'friendly' ? "Hello, ENA! Follow me..." : 
+                                entity.type === 'hostile' ? "Leave this dream!" : "I'm just drifting...");
+                }
+            });
+        }
+
+        function showDialogue(text) {
+            dialogue.textContent = text;
+            dialogue.style.display = 'block';
+            setTimeout(() => dialogue.style.display = 'none', 3000);
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#87ceeb';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#228b22';
+            platforms.forEach(platform => {
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            });
+
+            player.vx = 0;
+            if (keys['a'] || touchControls.left) player.vx = -player.speed;
+            if (keys['d'] || touchControls.right) player.vx = player.speed;
+            if ((keys['w'] || touchControls.jump) && player.onGround) {
+                player.vy = player.jumpPower;
+                player.onGround = false;
+            }
+
+            player.vy += player.gravity;
+            player.x += player.vx;
+            player.y += player.vy;
+
+            player.onGround = false;
+            platforms.forEach(platform => {
+                if (checkCollision(player, platform)) {
+                    if (player.vy > 0) {
+                        player.y = platform.y - player.height;
+                        player.vy = 0;
+                        player.onGround = true;
+                    } else if (player.vy < 0) {
+                        player.y = platform.y + platform.height;
+                        player.vy = 0;
+                    }
+                    if (player.vx > 0) player.x = platform.x - player.width;
+                    else if (player.vx < 0) player.x = platform.x + platform.width;
+                }
+            });
+
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+            ctx.fillStyle = '#ff69b4';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            updateEntities();
+            entities.forEach(entity => {
+                ctx.fillStyle = entity.type === 'friendly' ? '#00ff00' : entity.type === 'hostile' ? '#ff0000' : '#ffff00';
+                ctx.beginPath();
+                ctx.arc(entity.x, entity.y, entity.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>`,
+    type: 'html'
+};
+
+const aiShooterDemo = {
+    title: "AI Shooter Demo",
+    description: "Battle adaptive AI enemies in a sci-fi cityscape. Use WAS
